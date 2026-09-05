@@ -115,3 +115,10 @@ body {
 .btn-reject {
   @apply px-4 py-1.5 border border-risk-very-high text-risk-very-high bg-transparent rounded-full text-xs font-medium hover:bg-risk-very-high-bg;
 }
+
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
