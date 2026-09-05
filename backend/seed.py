@@ -4,13 +4,13 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 from datetime import datetime, timedelta, timezone
 import random
-import numpy as np
 from app.database import SessionLocal, engine, Base
 from app.models.zone import Zone
 from app.models.readings import RainfallReading, SoilMoistureReading, TerrainData
 from app.models.historical import HistoricalLandslide
 from app.models.infrastructure import Infrastructure
 from app.models.user import User
+from app.models.notification import Notification
 from app.services.auth_service import hash_password
 from app.services.risk_service import predict_risk, get_risk_level
 
@@ -60,68 +60,75 @@ now = datetime.now(timezone.utc)
 
 
 def seed():
-    Base.metadata.drop_all(bind=engine)
-    Base.metadata.create_all(bind=engine)
-    db = SessionLocal()
+    try:
+        Base.metadata.create_all(bind=engine)
+        db = SessionLocal()
 
-    admin = User(name="Admin Authority", email="admin@riskguard.gov.in", password_hash=hash_password("admin123"), role="authority")
-    citizen = User(name="Citizen User", email="citizen@riskguard.gov.in", password_hash=hash_password("citizen123"), role="citizen")
-    db.add_all([admin, citizen])
-    db.flush()
+        existing = db.query(Zone).count()
+        if existing > 0:
+            print(f"Database already has {existing} zones. Skipping seed.")
+            db.close()
+            return
 
-    zones_created = []
-    for z in NER_ZONES:
-        zone = Zone(
-            name=z["name"], state=z["state"], district=z["district"],
-            lat=z["lat"], lon=z["lon"], current_risk_score=0, current_risk_level="low",
-        )
-        db.add(zone)
+        admin = User(name="Admin Authority", email="admin@riskguard.gov.in", password_hash=hash_password("admin123"), role="authority")
+        citizen = User(name="Citizen User", email="citizen@riskguard.gov.in", password_hash=hash_password("citizen123"), role="citizen")
+        db.add_all([admin, citizen])
         db.flush()
 
-        terrain = TerrainData(zone_id=zone.id, slope_angle=z["slope"], elevation_m=z["elevation"], land_cover="mixed_forest")
-        db.add(terrain)
+        zones_created = []
+        for z in NER_ZONES:
+            zone = Zone(
+                name=z["name"], state=z["state"], district=z["district"],
+                lat=z["lat"], lon=z["lon"], current_risk_score=0, current_risk_level="low",
+            )
+            db.add(zone)
+            db.flush()
 
-        for h in range(72):
-            ts = now - timedelta(hours=h)
-            rain_var = z["rainfall_base"] * (0.7 + 0.6 * random.random())
-            if random.random() < 0.15:
-                rain_var *= 1.5 + random.random()
-            db.add(RainfallReading(zone_id=zone.id, precipitationCal=round(rain_var, 1), timestamp=ts))
-            moisture_var = z["moisture_base"] + random.gauss(0, 8)
-            moisture_var = max(15, min(95, moisture_var))
-            db.add(SoilMoistureReading(zone_id=zone.id, moisture_pct=round(moisture_var, 1), timestamp=ts))
+            terrain = TerrainData(zone_id=zone.id, slope_angle=z["slope"], elevation_m=z["elevation"], land_cover="mixed_forest")
+            db.add(terrain)
 
-        hist_events = random.randint(2, 8)
-        for i in range(hist_events):
-            evt_date = now - timedelta(days=random.randint(30, 1800))
-            severity = random.choice(["minor", "moderate", "severe", "critical"])
-            descs = {
-                "minor": "Small rockfall blocking local path",
-                "moderate": "Landslide blocking road for several hours",
-                "severe": "Major landslide destroying section of highway",
-                "critical": "Catastrophic landslide affecting village area",
-            }
-            db.add(HistoricalLandslide(zone_id=zone.id, event_date=evt_date, severity=severity, description=descs[severity]))
+            for h in range(72):
+                ts = now - timedelta(hours=h)
+                rain_var = z["rainfall_base"] * (0.7 + 0.6 * random.random())
+                if random.random() < 0.15:
+                    rain_var *= 1.5 + random.random()
+                db.add(RainfallReading(zone_id=zone.id, precipitationCal=round(rain_var, 1), timestamp=ts))
+                moisture_var = z["moisture_base"] + random.gauss(0, 8)
+                moisture_var = max(15, min(95, moisture_var))
+                db.add(SoilMoistureReading(zone_id=zone.id, moisture_pct=round(moisture_var, 1), timestamp=ts))
 
-        infra_count = random.randint(2, 5)
-        for _ in range(infra_count):
-            infra_type, names = random.choice(INFRA_TEMPLATES)
-            name = f"{random.choice(names)} near {z['name']}"
-            pop = random.randint(200, 15000) if infra_type in ("village", "school") else None
-            db.add(Infrastructure(zone_id=zone.id, type=infra_type, name=name, population_estimate=pop))
+            hist_events = random.randint(2, 8)
+            for i in range(hist_events):
+                evt_date = now - timedelta(days=random.randint(30, 1800))
+                severity = random.choice(["minor", "moderate", "severe", "critical"])
+                descs = {
+                    "minor": "Small rockfall blocking local path",
+                    "moderate": "Landslide blocking road for several hours",
+                    "severe": "Major landslide destroying section of highway",
+                    "critical": "Catastrophic landslide affecting village area",
+                }
+                db.add(HistoricalLandslide(zone_id=zone.id, event_date=evt_date, severity=severity, description=descs[severity]))
 
-        latest_rain = z["rainfall_base"] * (0.8 + 0.4 * random.random())
-        latest_moisture = z["moisture_base"] + random.gauss(0, 5)
-        hist_count = len([h for h in db.new if isinstance(h, HistoricalLandslide) and h.zone_id == zone.id])
-        result = predict_risk(latest_rain, latest_moisture, z["slope"], z["elevation"], hist_count)
-        zone.current_risk_score = result["score"]
-        zone.current_risk_level = result["level"]
-        zones_created.append(zone)
+            infra_count = random.randint(2, 5)
+            for _ in range(infra_count):
+                infra_type, names = random.choice(INFRA_TEMPLATES)
+                name = f"{random.choice(names)} near {z['name']}"
+                pop = random.randint(200, 15000) if infra_type in ("village", "school") else None
+                db.add(Infrastructure(zone_id=zone.id, type=infra_type, name=name, population_estimate=pop))
 
-    db.commit()
-    print(f"Seeded {len(zones_created)} zones with readings, terrain, history, and infrastructure.")
-    print(f"Risk scores: {[(z.name, z.current_risk_score, z.current_risk_level) for z in zones_created]}")
-    db.close()
+            latest_rain = z["rainfall_base"] * (0.8 + 0.4 * random.random())
+            latest_moisture = z["moisture_base"] + random.gauss(0, 5)
+            hist_count = hist_events
+            result = predict_risk(latest_rain, latest_moisture, z["slope"], z["elevation"], hist_count)
+            zone.current_risk_score = result["score"]
+            zone.current_risk_level = result["level"]
+            zones_created.append(zone)
+
+        db.commit()
+        print(f"Seeded {len(zones_created)} zones successfully.")
+        db.close()
+    except Exception as e:
+        print(f"Seed error (non-fatal): {e}")
 
 
 if __name__ == "__main__":

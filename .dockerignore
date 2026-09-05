@@ -1,0 +1,13 @@
+node_modules/
+__pycache__/
+*.pyc
+*.db
+*.pkl
+uploads/
+.venv/
+venv/
+.git/
+.gitignore
+*.md
+frontend/node_modules/
+frontend/dist/
