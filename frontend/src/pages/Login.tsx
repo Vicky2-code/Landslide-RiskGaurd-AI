@@ -34,8 +34,8 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-bg flex">
-      {/* Left Panel — Brand */}
+    <div className="min-h-screen bg-bg flex flex-col lg:flex-row">
+      {/* Left Panel — Brand (hidden on mobile, visible on lg+) */}
       <div className="hidden lg:flex lg:w-1/2 bg-navy flex-col justify-between p-12 relative overflow-hidden">
         <div className="absolute inset-0 opacity-10">
           <svg viewBox="0 0 800 600" className="w-full h-full">
@@ -55,7 +55,6 @@ export default function Login() {
           </div>
           <p className="text-text-soft text-sm mt-1">Landslide Risk Monitoring System</p>
         </div>
-
         <div className="relative z-10 space-y-6">
           <h2 className="font-serif text-white text-4xl font-bold leading-tight">
             Protecting India's<br />North Eastern Region<br />from Landslides
@@ -65,7 +64,6 @@ export default function Login() {
             to keep communities safe across all 8 NER states.
           </p>
         </div>
-
         <div className="relative z-10 grid grid-cols-3 gap-4">
           <div className="bg-white/5 rounded-xl p-4 border border-white/10">
             <div className="text-teal font-bold text-2xl font-serif">16</div>
@@ -83,42 +81,42 @@ export default function Login() {
       </div>
 
       {/* Right Panel — Form */}
-      <div className="flex-1 flex items-center justify-center p-8">
+      <div className="flex-1 flex items-center justify-center p-4 sm:p-6 md:p-8">
         <div className="w-full max-w-md">
           {/* Mobile brand */}
-          <div className="lg:hidden text-center mb-8">
+          <div className="lg:hidden text-center mb-6">
             <div className="w-14 h-14 bg-teal rounded-full flex items-center justify-center mx-auto mb-3">
               <FiMapPin className="text-white" size={24} />
             </div>
             <span className="font-serif text-text font-bold text-2xl">RiskGuard</span>
             <span className="text-teal font-bold text-sm ml-1">AI</span>
+            <p className="text-text-mute text-sm mt-1">Landslide Risk Monitoring</p>
           </div>
 
-          <h2 className="font-serif text-2xl font-bold text-text mb-1">
+          <h2 className="font-serif text-xl sm:text-2xl font-bold text-text mb-1">
             {mode === 'login' ? 'Welcome back' : 'Create your account'}
           </h2>
-          <p className="text-text-mute text-sm mb-6">
+          <p className="text-text-mute text-sm mb-5">
             {mode === 'login'
               ? 'Sign in to access the risk monitoring dashboard'
               : 'Join the landslide monitoring network'}
           </p>
 
-          {/* Role Selector (Register only) */}
           {mode === 'register' && (
-            <div className="grid grid-cols-2 gap-3 mb-6">
+            <div className="grid grid-cols-2 gap-3 mb-5">
               <button
                 type="button"
                 onClick={() => setRole('citizen')}
-                className={`p-4 rounded-xl border-2 text-left transition-all ${
+                className={`p-3 sm:p-4 rounded-xl border-2 text-left transition-all ${
                   role === 'citizen'
                     ? 'border-teal bg-teal/5'
                     : 'border-border bg-card hover:border-teal/50'
                 }`}
               >
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center mb-2 ${
+                <div className={`w-9 h-9 rounded-full flex items-center justify-center mb-2 ${
                   role === 'citizen' ? 'bg-teal text-white' : 'bg-bg text-text-mute'
                 }`}>
-                  <FiUser size={18} />
+                  <FiUser size={16} />
                 </div>
                 <div className="font-medium text-sm text-text">Citizen</div>
                 <div className="text-xs text-text-mute mt-0.5">Report issues, get alerts</div>
@@ -126,16 +124,16 @@ export default function Login() {
               <button
                 type="button"
                 onClick={() => setRole('authority')}
-                className={`p-4 rounded-xl border-2 text-left transition-all ${
+                className={`p-3 sm:p-4 rounded-xl border-2 text-left transition-all ${
                   role === 'authority'
                     ? 'border-teal bg-teal/5'
                     : 'border-border bg-card hover:border-teal/50'
                 }`}
               >
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center mb-2 ${
+                <div className={`w-9 h-9 rounded-full flex items-center justify-center mb-2 ${
                   role === 'authority' ? 'bg-teal text-white' : 'bg-bg text-text-mute'
                 }`}>
-                  <FiShield size={18} />
+                  <FiShield size={16} />
                 </div>
                 <div className="font-medium text-sm text-text">Authority</div>
                 <div className="text-xs text-text-mute mt-0.5">Review reports, manage alerts</div>
@@ -149,7 +147,7 @@ export default function Login() {
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-3.5">
             {mode === 'register' && (
               <div>
                 <label className="block text-sm font-medium text-text mb-1.5">Full Name</label>
@@ -158,12 +156,10 @@ export default function Login() {
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   className="w-full px-4 py-2.5 border border-border rounded-lg text-sm focus:outline-none focus:border-teal bg-card"
-                  placeholder={role === 'authority' ? 'e.g. District Collector' : 'e.g. Ramesh Kumar'}
                   required
                 />
               </div>
             )}
-
             <div>
               <label className="block text-sm font-medium text-text mb-1.5">Email</label>
               <input
@@ -171,11 +167,9 @@ export default function Login() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full px-4 py-2.5 border border-border rounded-lg text-sm focus:outline-none focus:border-teal bg-card"
-                placeholder={role === 'authority' ? 'you@district.gov.in' : 'you@example.com'}
                 required
               />
             </div>
-
             <div>
               <label className="block text-sm font-medium text-text mb-1.5">Password</label>
               <div className="relative">
@@ -184,7 +178,6 @@ export default function Login() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="w-full px-4 py-2.5 border border-border rounded-lg text-sm focus:outline-none focus:border-teal pr-10 bg-card"
-                  placeholder="Min 6 characters"
                   required
                 />
                 <button
@@ -196,17 +189,16 @@ export default function Login() {
                 </button>
               </div>
             </div>
-
             <button
               type="submit"
               disabled={loading}
-              className="w-full btn-primary py-3 text-center disabled:opacity-50 mt-2"
+              className="w-full btn-primary py-3 text-center disabled:opacity-50"
             >
-              {loading ? 'Please wait...' : mode === 'login' ? 'Sign In' : `Create ${role === 'authority' ? 'Authority' : 'Citizen'} Account`}
+              {loading ? 'Please wait...' : mode === 'login' ? 'Sign In' : `Create Account`}
             </button>
           </form>
 
-          <div className="mt-6 text-center text-sm text-text-mute">
+          <div className="mt-5 text-center text-sm text-text-mute">
             {mode === 'login' ? "Don't have an account?" : 'Already have an account?'}
             <button
               onClick={() => { setMode(mode === 'login' ? 'register' : 'login'); setError(''); }}
@@ -216,34 +208,19 @@ export default function Login() {
             </button>
           </div>
 
-          <div className="mt-8 p-4 bg-bg rounded-xl border border-border">
+          <div className="mt-6 p-3 bg-bg rounded-xl border border-border">
             <div className="text-xs font-medium text-text-mute mb-2">Demo Credentials</div>
-            <div className="space-y-1.5 text-xs">
+            <div className="space-y-1 text-xs">
               <div className="flex items-center gap-2">
-                <FiShield size={12} className="text-teal" />
+                <FiShield size={12} className="text-teal flex-shrink-0" />
                 <span className="text-text-mute">Authority:</span>
-                <code className="text-text font-medium">admin@riskguard.gov.in / admin123</code>
+                <code className="text-text font-medium break-all">admin@riskguard.gov.in / admin123</code>
               </div>
               <div className="flex items-center gap-2">
-                <FiUser size={12} className="text-teal" />
+                <FiUser size={12} className="text-teal flex-shrink-0" />
                 <span className="text-text-mute">Citizen:</span>
-                <code className="text-text font-medium">citizen@riskguard.gov.in / citizen123</code>
+                <code className="text-text font-medium break-all">citizen@riskguard.gov.in / citizen123</code>
               </div>
-            </div>
-          </div>
-
-          <div className="mt-6 flex items-center justify-center gap-6 text-xs text-text-soft">
-            <div className="flex items-center gap-1.5">
-              <FiAlertTriangle size={12} className="text-risk-high" />
-              <span>Real-time Alerts</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <FiFileText size={12} className="text-teal" />
-              <span>Citizen Reports</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <FiShield size={12} className="text-risk-low" />
-              <span>SMS Notifications</span>
             </div>
           </div>
         </div>

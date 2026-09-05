@@ -1,110 +1,79 @@
 import { useState, useEffect } from 'react';
-import { FiCheck, FiX, FiEye } from 'react-icons/fi';
-import api, { Report } from '../api';
+import { FiFileText, FiCheck, FiX, FiClock } from 'react-icons/fi';
+import api from '../api';
 
-const STATUS_COLORS: Record<string, { bg: string; text: string; label: string }> = {
-  pending: { bg: '#fef9c3', text: '#d97706', label: 'Pending' },
-  reviewed: { bg: '#dbeafe', text: '#2563eb', label: 'Reviewed' },
-  resolved: { bg: '#dcfce7', text: '#16a34a', label: 'Resolved' },
-  rejected: { bg: '#fee2e2', text: '#dc2626', label: 'Rejected' },
-};
+interface Report { id: number; title: string; description: string; severity: string; status: string; photo_url: string | null; latitude: number | null; longitude: number | null; created_at: string; reporter: { id: number; name: string; email: string; }; }
 
 export default function ReportsQueue() {
   const [reports, setReports] = useState<Report[]>([]);
-  const [filter, setFilter] = useState('pending');
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   const fetchReports = async () => {
-    try {
-      const params: any = {};
-      if (filter !== 'all') params.status = filter;
-      const res = await api.get('/reports', { params });
-      setReports(res.data);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoading(false);
-    }
+    try { const res = await api.get('/reports', { params: { status: 'pending' } }); setReports(res.data); setError(''); }
+    catch (e) { setError('Failed to load reports.'); }
+    finally { setLoading(false); }
   };
 
-  useEffect(() => { fetchReports(); }, [filter]);
+  useEffect(() => { fetchReports(); }, []);
 
-  const updateStatus = async (id: number, status: string) => {
-    try {
-      await api.patch(`/reports/${id}?status=${status}`);
-      fetchReports();
-    } catch (e) {
-      console.error(e);
-    }
+  const handleAction = async (reportId: number, action: 'approve' | 'reject') => {
+    try { await api.patch(`/reports/${reportId}/${action}`); setReports(prev => prev.filter(r => r.id !== reportId)); }
+    catch (e) { console.error(e); }
   };
+
+  const severityColor = (s: string) => s === 'critical' ? 'bg-risk-very-high text-risk-very-high' : s === 'high' ? 'bg-risk-high text-risk-high' : s === 'medium' ? 'bg-risk-medium text-risk-medium' : 'bg-risk-low text-risk-low';
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="font-serif text-2xl font-bold text-text">Reports Review Queue</h2>
-        <div className="flex gap-2">
-          {['pending', 'all', 'reviewed', 'resolved', 'rejected'].map((f) => (
-            <button
-              key={f}
-              onClick={() => setFilter(f)}
-              className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-                filter === f ? 'bg-teal text-white' : 'bg-card border border-border text-text-mute hover:text-text'
-              }`}
-            >
-              {f.charAt(0).toUpperCase() + f.slice(1)}
-            </button>
-          ))}
-        </div>
+    <div className="space-y-4 md:space-y-6">
+      <div>
+        <h2 className="font-serif text-xl md:text-2xl font-bold text-text">Reports Review Queue</h2>
+        <p className="text-sm text-text-mute mt-1">Review and validate citizen-submitted reports</p>
       </div>
-
       {loading ? (
-        <div className="text-center py-20 text-text-mute">Loading reports...</div>
+        <div className="bg-card border border-border rounded-xl p-8 text-center text-text-mute text-sm">Loading reports...</div>
+      ) : error ? (
+        <div className="bg-card border border-border rounded-xl p-8 text-center text-risk-very-high text-sm">{error}</div>
       ) : reports.length === 0 ? (
-        <div className="text-center py-20 text-text-mute">No reports in this category.</div>
+        <div className="bg-card border border-border rounded-xl p-8 md:p-12 text-center">
+          <FiFileText size={48} className="mx-auto text-text-mute mb-4" />
+          <p className="text-text font-medium">No Pending Reports</p>
+          <p className="text-sm text-text-mute mt-1">All citizen reports have been reviewed.</p>
+        </div>
       ) : (
-        <div className="bg-card border border-border rounded-xl overflow-hidden">
-          <div className="divide-y divide-[#eef2f1]">
-            {reports.map((report) => {
-              const status = STATUS_COLORS[report.status] || STATUS_COLORS.pending;
-              return (
-                <div key={report.id} className="px-6 py-4 flex items-center justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-1">
-                      <span className="font-medium text-sm text-text">{report.issue_type}</span>
-                      <span
-                        className="risk-pill text-xs"
-                        style={{ background: status.bg, color: status.text }}
-                      >
-                        {status.label}
-                      </span>
-                    </div>
-                    {report.description && (
-                      <p className="text-xs text-text-mute mb-1 line-clamp-1">{report.description}</p>
-                    )}
-                    <div className="flex items-center gap-4 text-xs text-text-soft">
-                      <span>{report.lat.toFixed(4)}, {report.lon.toFixed(4)}</span>
-                      <span>{new Date(report.created_at).toLocaleString()}</span>
-                      {report.photo_url && <span className="text-teal">Has photo</span>}
-                    </div>
+        <div className="space-y-3 md:space-y-4">
+          {reports.map(report => (
+            <div key={report.id} className="bg-card border border-border rounded-xl p-4 md:p-5 shadow-sm">
+              <div className="flex flex-col md:flex-row gap-4">
+                {report.photo_url && (
+                  <div className="w-full md:w-40 h-32 md:h-28 bg-bg rounded-lg overflow-hidden flex-shrink-0">
+                    <img src={report.photo_url} alt={report.title} className="w-full h-full object-cover"/>
                   </div>
-                  <div className="flex items-center gap-2 ml-4">
-                    {report.status === 'pending' ? (
-                      <>
-                        <button onClick={() => updateStatus(report.id, 'resolved')} className="btn-approve flex items-center gap-1">
-                          <FiCheck size={12} /> Approve
-                        </button>
-                        <button onClick={() => updateStatus(report.id, 'rejected')} className="btn-reject flex items-center gap-1">
-                          <FiX size={12} /> Reject
-                        </button>
-                      </>
-                    ) : (
-                      <span className="text-xs text-text-soft">View →</span>
-                    )}
+                )}
+                <div className="flex-1 min-w-0">
+                  <div className="flex flex-wrap items-center gap-2 mb-1.5">
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${severityColor(report.severity)}`}>{report.severity}</span>
+                    <span className="text-xs text-text-mute">{report.reporter?.name || 'Unknown'}</span>
+                  </div>
+                  <h3 className="font-medium text-sm md:text-base text-text mb-1 truncate">{report.title}</h3>
+                  <p className="text-sm text-text-mute line-clamp-2 mb-2">{report.description}</p>
+                  <div className="flex flex-wrap items-center gap-4 text-xs text-text-mute">
+                    <span className="flex items-center gap-1"><FiClock size={12}/>{new Date(report.created_at).toLocaleString()}</span>
+                    {report.latitude != null && <span>Lat: {report.latitude.toFixed(4)}</span>}
+                    {report.longitude != null && <span>Lon: {report.longitude.toFixed(4)}</span>}
                   </div>
                 </div>
-              );
-            })}
-          </div>
+                <div className="flex md:flex-col gap-2 flex-shrink-0">
+                  <button onClick={() => handleAction(report.id, 'approve')} className="flex-1 md:flex-none flex items-center justify-center gap-1.5 px-4 py-2 bg-risk-low text-white rounded-lg text-xs font-medium hover:bg-risk-low/90 transition-colors">
+                    <FiCheck size={14}/> Approve
+                  </button>
+                  <button onClick={() => handleAction(report.id, 'reject')} className="flex-1 md:flex-none flex items-center justify-center gap-1.5 px-4 py-2 bg-card border border-border text-risk-very-high rounded-lg text-xs font-medium hover:bg-risk-very-high-bg transition-colors">
+                    <FiX size={14}/> Reject
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       )}
     </div>

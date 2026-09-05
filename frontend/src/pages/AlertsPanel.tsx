@@ -1,136 +1,76 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { FiAlertTriangle, FiCheck, FiClock } from 'react-icons/fi';
-import api, { Alert } from '../api';
+import { FiAlertTriangle, FiClock, FiCheckCircle } from 'react-icons/fi';
+import api from '../api';
 
-const RISK_COLORS: Record<string, string> = { low: '#22c55e', moderate: '#eab308', high: '#f97316', very_high: '#dc2626' };
+interface Alert { id: number; zone_id: number; zone_name: string; risk_score: number; message: string; severity: string; status: string; created_at: string; }
 
 export default function AlertsPanel() {
   const [alerts, setAlerts] = useState<Alert[]>([]);
-  const [filter, setFilter] = useState('all');
   const [loading, setLoading] = useState(true);
-  const navigate = useNavigate();
+  const [error, setError] = useState('');
+  const [filter, setFilter] = useState<'all' | 'active' | 'acknowledged'>('all');
   const pollRef = useRef<any>(null);
 
   const fetchAlerts = async () => {
     try {
-      const params: any = {};
-      if (filter === 'active') params.status = 'sent';
-      if (filter === 'acknowledged') params.status = 'acknowledged';
-      const res = await api.get('/alerts', { params });
+      const res = await api.get('/alerts', { params: filter === 'all' ? {} : { status: filter } });
       setAlerts(res.data);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoading(false);
-    }
+      setError('');
+    } catch (e) { setError('Failed to load alerts.'); }
+    finally { setLoading(false); }
   };
 
-  useEffect(() => { fetchAlerts(); }, [filter]);
+  useEffect(() => { fetchAlerts(); pollRef.current = setInterval(fetchAlerts, 30000); return () => clearInterval(pollRef.current); }, [filter]);
 
-  useEffect(() => {
-    pollRef.current = setInterval(fetchAlerts, 15000);
-    return () => clearInterval(pollRef.current);
-  }, [filter]);
-
-  const acknowledge = async (id: number) => {
-    try {
-      await api.patch(`/alerts/${id}`);
-      fetchAlerts();
-    } catch (e) {
-      console.error(e);
-    }
+  const acknowledge = async (alertId: number) => {
+    try { await api.patch(`/alerts/${alertId}/acknowledge`); setAlerts(prev => prev.map(a => a.id === alertId ? { ...a, status: 'acknowledged' } : a)); }
+    catch (e) { console.error(e); }
   };
 
-  const getRiskColor = (score: number) => {
-    if (score >= 75) return RISK_COLORS.very_high;
-    if (score >= 50) return RISK_COLORS.high;
-    if (score >= 25) return RISK_COLORS.moderate;
-    return RISK_COLORS.low;
-  };
+  const severityColor = (s: string) => s === 'critical' ? 'bg-risk-very-high text-risk-very-high' : s === 'high' ? 'bg-risk-high text-risk-high' : s === 'medium' ? 'bg-risk-medium text-risk-medium' : 'bg-risk-low text-risk-low';
+  const severityIcon = (s: string) => s === 'critical' ? '🔴' : s === 'high' ? '🟠' : s === 'medium' ? '🟡' : '🟢';
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="font-serif text-2xl font-bold text-text">Alerts</h2>
-        <div className="flex gap-2">
-          {['all', 'active', 'acknowledged'].map((f) => (
-            <button
-              key={f}
-              onClick={() => setFilter(f)}
-              className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-                filter === f ? 'bg-teal text-white' : 'bg-card border border-border text-text-mute hover:text-text'
-              }`}
-            >
-              {f.charAt(0).toUpperCase() + f.slice(1)}
-            </button>
+    <div className="space-y-4 md:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+        <div>
+          <h2 className="font-serif text-xl md:text-2xl font-bold text-text">Active Alerts</h2>
+          <p className="text-sm text-text-mute mt-1">Critical risk notifications requiring attention</p>
+        </div>
+        <div className="flex items-center gap-2 sm:ml-auto">
+          {(['all', 'active', 'acknowledged'] as const).map(f => (
+            <button key={f} onClick={() => setFilter(f)} className={`px-3 py-1.5 rounded-lg text-xs font-medium capitalize transition-colors border ${filter === f ? 'bg-navy text-white border-navy' : 'bg-card text-text-mute border-border hover:border-navy/50'}`}>{f}</button>
           ))}
         </div>
       </div>
-
       {loading ? (
-        <div className="text-center py-20 text-text-mute">Loading alerts...</div>
+        <div className="bg-card border border-border rounded-xl p-8 text-center text-text-mute text-sm">Loading alerts...</div>
+      ) : error ? (
+        <div className="bg-card border border-border rounded-xl p-8 text-center text-risk-very-high text-sm">{error}</div>
       ) : alerts.length === 0 ? (
-        <div className="text-center py-20">
-          <FiAlertTriangle className="mx-auto text-text-soft mb-3" size={40} />
-          <p className="text-text-mute">No alerts in this category.</p>
+        <div className="bg-card border border-border rounded-xl p-8 md:p-12 text-center">
+          <FiCheckCircle size={48} className="mx-auto text-risk-low mb-4" />
+          <p className="text-text font-medium">No Active Alerts</p>
+          <p className="text-sm text-text-mute mt-1">All monitored zones are currently within safe risk levels.</p>
         </div>
       ) : (
         <div className="space-y-3">
-          {alerts.map((alert) => (
-            <div key={alert.id} className="bg-card border border-border rounded-xl p-5">
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-2">
-                    <div
-                      className="w-3 h-3 rounded-full"
-                      style={{ background: getRiskColor(alert.risk_score_at_trigger) }}
-                    />
-                    <span
-                      className="risk-pill"
-                      style={{
-                        background: getRiskColor(alert.risk_score_at_trigger) + '20',
-                        color: getRiskColor(alert.risk_score_at_trigger),
-                      }}
-                    >
-                      Score: {Math.round(alert.risk_score_at_trigger)}
-                    </span>
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${
-                      alert.status === 'sent'
-                        ? 'bg-risk-high-bg text-risk-high'
-                        : 'bg-risk-low-bg text-risk-low'
-                    }`}>
-                      {alert.status === 'sent' ? 'Active' : 'Acknowledged'}
-                    </span>
+          {alerts.map(alert => (
+            <div key={alert.id} className="bg-card border border-border rounded-xl p-4 md:p-5 shadow-sm hover:shadow-md transition-shadow">
+              <div className="flex flex-col sm:flex-row sm:items-start gap-3">
+                <div className="flex-1 min-w-0">
+                  <div className="flex flex-wrap items-center gap-2 mb-1.5">
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${severityColor(alert.severity)}`}>{alert.severity}</span>
+                    <span className="text-xs text-text-mute flex items-center gap-1"><FiClock size={12}/>{new Date(alert.created_at).toLocaleString()}</span>
                   </div>
-                  <p className="text-sm text-text mb-1">{alert.message_en}</p>
-                  {alert.message_regional && (
-                    <p className="text-xs text-text-mute italic">{alert.message_regional} ({alert.regional_language})</p>
-                  )}
-                  <div className="flex items-center gap-4 mt-3 text-xs text-text-soft">
-                    <span>{alert.zone_name}</span>
-                    <span className="flex items-center gap-1">
-                      <FiClock size={12} />
-                      {new Date(alert.created_at).toLocaleString()}
-                    </span>
-                  </div>
+                  <h3 className="font-medium text-sm md:text-base text-text mb-1">{alert.zone_name} — Risk Score: {alert.risk_score}/100</h3>
+                  <p className="text-sm text-text-mute">{alert.message}</p>
                 </div>
-                <div className="flex items-center gap-2 ml-4">
-                  <button
-                    onClick={() => navigate(`/zones/${alert.zone_id}`)}
-                    className="text-teal text-xs hover:underline"
-                  >
-                    View Zone →
+                {alert.status !== 'acknowledged' && (
+                  <button onClick={() => acknowledge(alert.id)} className="btn-ghost border border-border py-2 px-4 text-xs flex items-center justify-center gap-1.5 flex-shrink-0 hover:border-teal/50">
+                    <FiCheckCircle size={14}/> Acknowledge
                   </button>
-                  {alert.status === 'sent' && (
-                    <button
-                      onClick={() => acknowledge(alert.id)}
-                      className="btn-approve flex items-center gap-1"
-                    >
-                      <FiCheck size={12} /> Acknowledge
-                    </button>
-                  )}
-                </div>
+                )}
               </div>
             </div>
           ))}
