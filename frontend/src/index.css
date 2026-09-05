@@ -1,0 +1,117 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --navy: #16302b;
+  --navy-2: #1c3a33;
+  --teal: #0d9488;
+  --teal-dark: #0b7a70;
+  --amber: #d97706;
+  --bg: #f4f7f6;
+  --card: #ffffff;
+  --border: #dbe5e2;
+  --text: #16302b;
+  --text-mute: #5b6f6a;
+  --text-soft: #8a9a96;
+  --risk-low: #22c55e;
+  --risk-moderate: #eab308;
+  --risk-high: #f97316;
+  --risk-very-high: #dc2626;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.leaflet-container {
+  background: #e7f0ed;
+  border-radius: 10px;
+}
+
+.risk-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid white;
+  box-shadow: 0 0 0 3px currentColor;
+}
+
+.sidebar-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  border-radius: 8px;
+  color: #8a9a96;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.15s;
+  border-left: 4px solid transparent;
+}
+
+.sidebar-link:hover {
+  color: white;
+  background: rgba(255,255,255,0.05);
+}
+
+.sidebar-link.active {
+  background: #1c3a33;
+  color: white;
+  border-left-color: #0d9488;
+}
+
+.stat-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 20px;
+  background: white;
+  border: 1px solid #dbe5e2;
+  border-radius: 10px;
+}
+
+.stat-card .icon-badge {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+}
+
+.risk-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: 9999px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.btn-primary {
+  @apply px-5 py-2.5 bg-teal text-white rounded-full font-medium text-sm transition-colors hover:bg-teal-dark;
+}
+
+.btn-secondary {
+  @apply px-5 py-2.5 border border-teal text-teal bg-transparent rounded-full font-medium text-sm transition-colors hover:bg-teal hover:text-white;
+}
+
+.btn-approve {
+  @apply px-4 py-1.5 border border-risk-low text-risk-low bg-transparent rounded-full text-xs font-medium hover:bg-risk-low-bg;
+}
+
+.btn-reject {
+  @apply px-4 py-1.5 border border-risk-very-high text-risk-very-high bg-transparent rounded-full text-xs font-medium hover:bg-risk-very-high-bg;
+}
