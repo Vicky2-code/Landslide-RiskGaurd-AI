@@ -1,11 +1,18 @@
 FROM python:3.11-slim
 
+RUN apt-get update && apt-get install -y --no-install-recommends gcc libpq-dev curl && \
+    curl -fsSL https://deb.nodesource.com/setup_18.x | bash - && \
+    apt-get install -y nodejs && \
+    rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
 
-RUN apt-get update && apt-get install -y --no-install-recommends gcc libpq-dev && rm -rf /var/lib/apt/lists/*
-
 COPY backend/ ./backend/
-COPY frontend/dist/ ./backend/frontend/dist/
+COPY frontend/ ./frontend/
+
+RUN cd frontend && npm install && npm run build && \
+    mkdir -p ../backend/frontend && \
+    cp -r dist ../backend/frontend/
 
 RUN cd backend && pip install --no-cache-dir -r requirements.txt
 
